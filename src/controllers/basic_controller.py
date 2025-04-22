@@ -71,10 +71,13 @@ class BasicMAC:
         return agent_outs.view(ep_batch.batch_size, self.n_agents, -1)
 
     def init_hidden(self, batch_size):
-        if self.args.agent not in ['updet', 'transformer_aggregation']:
+        if self.args.agent not in ['updet', 'transformer_aggregation'] and 'dasen' not in self.args.agent:
             self.hidden_states = self.agent.init_hidden().unsqueeze(0).expand(batch_size, self.n_agents, -1)  # bav
         else:
             self.hidden_states = self.agent.init_hidden().unsqueeze(0).expand(batch_size, self.n_agents, 1, -1)
+        
+        if 'dasen' in self.args.agent:
+            self.skill_states = self.agent.init_skill().unsqueeze(0).expand(batch_size, self.n_agents, 1, -1)
 
 
     def parameters(self):

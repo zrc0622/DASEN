@@ -74,7 +74,7 @@ class EpisodeRunner:
                 "reward": [(reward,)],
                 "terminated": [(terminated != env_info.get("episode_limit", False),)],
             }
-
+            if self.args.mixer == "se_qmix": post_transition_data["skill_state"] = self.mac.skill_states.mean(dim=0)
             self.batch.update(post_transition_data, ts=self.t)
 
             self.t += 1
@@ -84,6 +84,7 @@ class EpisodeRunner:
             "avail_actions": [self.env.get_avail_actions()],
             "obs": [self.env.get_obs()]
         }
+        if self.args.mixer == "se_qmix": last_data["skill_state"] = self.mac.skill_states.mean(dim=0)
         self.batch.update(last_data, ts=self.t)
 
         # Select actions in the last stored state
@@ -110,7 +111,13 @@ class EpisodeRunner:
                 self.logger.log_stat("epsilon", self.mac.action_selector.epsilon, self.t_env)
             self.log_train_stats_t = self.t_env
 
-        return self.batch
+        if self.args.zero_shot:
+            if len(self.test_returns) == self.args.test_nepisode:
+                return cur_stats["battle_won"]/cur_stats["n_episodes"]*100
+            else:
+                return -1
+        else:
+            return self.batch
 
     def _log(self, returns, stats, prefix):
         self.logger.log_stat(prefix + "return_mean", np.mean(returns), self.t_env)

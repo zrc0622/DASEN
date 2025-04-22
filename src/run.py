@@ -14,7 +14,8 @@ from runners import REGISTRY as r_REGISTRY
 from controllers import REGISTRY as mac_REGISTRY
 from components.episode_buffer import ReplayBuffer
 from components.transforms import OneHot
-
+import datetime
+import numpy as np
 
 def run(_run, _config, _log):
 
@@ -33,11 +34,14 @@ def run(_run, _config, _log):
                                        width=1)
     _log.info("\n\n" + experiment_params + "\n")
 
+    current_time = datetime.datetime.now()
+    formatted_time = current_time.strftime("%m%d%H%M%S")
+
     # configure tensorboard logger
-    unique_token = "{}-{}-{}-{}-dim-{}-heads-{}-depth".format(args.name, args.agent,
-                                                                            args.env_args['map_name'],
-                                                                            args.emb, args.heads,
-                                                                            args.depth)
+    if "dasen" in args.agent:
+        unique_token = "{}-{}-{}-{}-skill-{}".format(formatted_time, args.agent, args.name, args.env_args['map_name'], args.skill_num)
+    else:
+        unique_token = "{}-{}-{}-{}".format(formatted_time, args.agent, args.name, args.env_args['map_name'])
 
     unique_token += "-seed-{}".format(_config["seed"])
 
@@ -70,14 +74,35 @@ def run(_run, _config, _log):
 
 
 def evaluate_sequential(args, runner):
+    if not args.zero_shot:
+        for _ in range(args.test_nepisode):
+            runner.run(test_mode=True)
 
-    for _ in range(args.test_nepisode):
-        runner.run(test_mode=True)
+        if args.save_replay:
+            runner.save_replay()
 
-    if args.save_replay:
-        runner.save_replay()
+        runner.close_env()
+    else:
+        results = []
+        for _ in range(args.test_num):
+            for _ in range(args.test_nepisode):
+                success_rate = runner.run(test_mode=True)
+            if success_rate != -1: results.append(success_rate)
+        mean_rate = np.mean(results)
+        variance_rate = np.var(results)
+        std_deviation = np.std(results)
+        print("+" + "-"*40 + "+")
+        print("| Success Rate List:    ", results, " "* (30 - len(str(results))), "|")
+        print("| Mean Success Rate:    ", mean_rate, " "* (30 - len(str(mean_rate))), "|")
+        print("| Variance of Success Rate: ", variance_rate, " "* (30 - len(str(variance_rate))), "|")
+        print("| Standard Deviation of Success Rate: ", std_deviation, " "* (30 - len(str(std_deviation))), "|")
+        print("+" + "-"*40 + "+")
 
-    runner.close_env()
+        if args.save_replay:
+            runner.save_replay()
+
+        runner.close_env()
+            
 
 def run_sequential(args, logger):
 
@@ -99,6 +124,8 @@ def run_sequential(args, logger):
         "reward": {"vshape": (1,)},
         "terminated": {"vshape": (1,), "dtype": th.uint8},
     }
+    if args.name == "se_qmix":
+        scheme["skill_state"] = {"vshape": args.skill_num, "dtype": th.long}
     groups = {
         "agents": args.n_agents
     }

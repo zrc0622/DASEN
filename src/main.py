@@ -50,6 +50,16 @@ def _get_config(params, arg_name, subfolder):
                 assert False, "{}.yaml error: {}".format(config_name, exc)
         return config_dict
 
+def _get_config_name(params, arg_name):
+    config_name = None
+    for _i, _v in enumerate(params):
+        if _v.split("=")[0] == arg_name:
+            config_name = _v.split("=")[1]
+            del params[_i]
+            break
+
+    if config_name is not None:
+        return config_name
 
 def recursive_dict_update(d, u):
     for k, v in u.items():
@@ -103,11 +113,12 @@ if __name__ == '__main__':
     params = deepcopy(sys.argv)
 
     # Get the defaults from default.yaml
-    with open(os.path.join(os.path.dirname(__file__), "config", "default.yaml"), "r") as f:
+    config_name = _get_config_name(params, "--total-config")
+    with open(os.path.join(os.path.dirname(__file__), "config", f"{config_name}.yaml"), "r") as f:
         try:
             config_dict = yaml.load(f)
         except yaml.YAMLError as exc:
-            assert False, "default.yaml error: {}".format(exc)
+            assert False, "{}.yaml error: {}".format(config_name, exc)
 
     # Load algorithm and env base configs
     env_config = _get_config(params, "--env-config", "envs")
