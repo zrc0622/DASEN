@@ -1,3 +1,8 @@
+3rdparty/
+__MACOSX/
+results/
+*.whl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

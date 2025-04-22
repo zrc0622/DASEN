@@ -1,0 +1,80 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "DASEN-v1",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--total-config=dasen",
+                "--agent=dasen_v1",
+                "--config=qmix",
+                "--env-config=sc2",
+                "with",
+                "env_args.map_name=5m_vs_6m"
+            ]
+        },
+        {
+            "name": "DASEN-v2",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--total-config=dasen",
+                "--agent=dasen_v2",
+                "--config=qmix",
+                "--env-config=sc2",
+                "with",
+                "env_args.map_name=5m_vs_6m"
+            ]
+        },
+        {
+            "name": "DASEN-v3",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--total-config=dasen",
+                "--agent=dasen_v3",
+                "--config=qmix",
+                "--env-config=sc2",
+                "with",
+                "env_args.map_name=5m_vs_6m"
+            ]
+        },
+        {
+            "name": "DASEN-v3+SE-QMIX",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--total-config=dasen",
+                "--agent=dasen_v3",
+                "--config=se_qmix",
+                "--env-config=sc2",
+                "with",
+                "env_args.map_name=5m_vs_6m"
+            ]
+        },
+        {
+            "name": "ZERO",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--total-config=dasen_zero",
+                "--agent=dasen_v3",
+                "--config=se_qmix",
+                "--env-config=sc2_zero",
+                "with",
+                "env_args.map_name=5m_vs_6m"
+            ]
+        }
+    ]
+}

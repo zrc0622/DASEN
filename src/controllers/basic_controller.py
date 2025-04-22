@@ -15,6 +15,7 @@ class BasicMAC:
         self.action_selector = action_REGISTRY[args.action_selector](args)
 
         self.hidden_states = None
+        self.skill_states = None
 
     def select_actions(self, ep_batch, t_ep, t_env, bs=slice(None), test_mode=False):
         # Only select actions for the selected batch elements in bs
@@ -26,7 +27,7 @@ class BasicMAC:
     def forward(self, ep_batch, t, test_mode=False):
 
         # rnn based agent
-        if self.args.agent not in ['updet', 'transformer_aggregation']:
+        if self.args.agent not in ['updet', 'transformer_aggregation'] and 'dasen' not in self.args.agent:
             agent_inputs = self._build_inputs(ep_batch, t)
             avail_actions = ep_batch["avail_actions"][:, t]
             agent_outs, self.hidden_states = self.agent(agent_inputs, self.hidden_states)
@@ -57,9 +58,15 @@ class BasicMAC:
         # transformer based agent
         else:
             agent_inputs = self._build_inputs_transformer(ep_batch, t)
-            agent_outs, self.hidden_states = self.agent(agent_inputs,
-                                                           self.hidden_states.reshape(-1, 1, self.args.emb),
-                                                           self.args.enemy_num, self.args.ally_num)
+            if 'dasen' in self.args.agent:
+                agent_outs, self.hidden_states, self.skill_states = self.agent(agent_inputs,
+                                                            self.hidden_states.reshape(-1, 1, self.args.emb),
+                                                            self.skill_states.reshape(-1, 1, self.args.skill_num),
+                                                            self.args.enemy_num, self.args.ally_num)
+            else:
+                agent_outs, self.hidden_states = self.agent(agent_inputs,
+                                                            self.hidden_states.reshape(-1, 1, self.args.emb),
+                                                            self.args.enemy_num, self.args.ally_num)
 
         return agent_outs.view(ep_batch.batch_size, self.n_agents, -1)
 

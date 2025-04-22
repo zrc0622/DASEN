@@ -1,4 +1,44 @@
-# UPDeT
+# DASEN
+
+## 训练
+
+```bash
+# UPDeT (baseline)
+python3 src/main.py --total-config=default --alg-config=qmix --env-config=sc2 --agent with env_args.map_name=5m_vs_6m
+
+# DASEN-v1
+python3 src/main.py --total-config=dasen --agent=dasen_v1 --alg-config=qmix --env-config=sc2 with env_args.map_name=5m_vs_6m
+
+# DASEN-v2
+python3 src/main.py --total-config=dasen --agent=dasen_v2 --alg-config=qmix --env-config=sc2 with env_args.map_name=5m_vs_6m
+
+# DASEN-v3
+python3 src/main.py --total-config=dasen --agent=dasen_v3 --alg-config=qmix --env-config=sc2 with env_args.map_name=5m_vs_6m
+
+# DASEN-v3 + SE-QMIX
+python3 src/main.py --total-config=dasen --agent=dasen_v3 --alg-config=se_qmix --env-config=sc2 with env_args.map_name=5m_vs_6m
+```
+
+## 零样本泛化
+
+```bash
+# UPDeT (baseline)
+python3 src/main.py --total-config=default_zero --alg-config=qmix --env-config=sc2_zero --agent with env_args.map_name=5m_vs_6m
+
+# DASEN-v1
+python3 src/main.py --total-config=dasen_zero --agent=dasen_v1 --alg-config=qmix --env-config=sc2_zero with env_args.map_name=5m_vs_6m
+
+# DASEN-v2
+python3 src/main.py --total-config=dasen_zero --agent=dasen_v2 --alg-config=qmix --env-config=sc2_zero with env_args.map_name=5m_vs_6m
+
+# DASEN-v3
+python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=qmix --env-config=sc2_zero with env_args.map_name=5m_vs_6m
+
+# DASEN-v3 + SE-QMIX
+python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=se_qmix --env-config=sc2_zero with env_args.map_name=5m_vs_6m
+```
+
+<!-- # UPDeT
 Official Implementation of [UPDeT: Universal Multi-agent Reinforcement Learning via Policy Decoupling with Transformers](https://openreview.net/forum?id=v9c7hr9ADKx) (ICLR 2021 spotlight)
 
 The framework is inherited from [PyMARL](https://github.com/oxwhirl/pymarl). [UPDeT](https://github.com/hhhusiyi-monash/UPDeT) is written in [pytorch](https://pytorch.org) and uses [SMAC](https://github.com/oxwhirl/smac) as its environment.
@@ -71,4 +111,4 @@ Zero-shot generalize to different tasks:
 
 ## License
 
-The MIT License
+The MIT License -->

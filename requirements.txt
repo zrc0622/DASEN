@@ -25,7 +25,7 @@ portpicker==1.2.0
 probscale==0.2.3
 protobuf==3.6.1
 py==1.6.0
-pygame==1.9.4
+pygame==2.0.0
 pyparsing==2.2.2
 pysc2==3.0.0
 pytest==3.8.2
@@ -39,7 +39,7 @@ six==1.11.0
 sk-video==1.1.10
 snakeviz==1.0.0
 tensorboard-logger==0.1.0
-torch==0.4.1
+# torch==0.4.1
 torchvision==0.2.1
 tornado==5.1.1
 urllib3==1.24.2
