@@ -3,47 +3,41 @@ import torch.nn.functional as F
 import torch
 import argparse
 
-
-class PhaseUPDeT1(nn.Module):
+class DASEN_v1(nn.Module):
     def __init__(self, input_shape, args):
-        super(PhaseUPDeT1, self).__init__()
+        super(DASEN_v1, self).__init__()
         self.args = args
-        self.transformer = Transformer1(args.token_dim, args.emb, args.heads, args.depth, args.emb, args.phase_num, args.mask, args.mask_prob)
-        self.q_self = nn.Linear(args.emb+args.phase_rep, 6)
-        if(args.divide_Q): self.q_interaction = nn.Linear(args.emb+args.phase_rep, 1)
-        self.p_next = GumbelSoftmaxNetwork(args.emb, args.phase_hidden, args.phase_num, args.temperature)
+        self.transformer = SkillTransformer(args.token_dim, args.emb, args.heads, args.depth, args.emb, args.skill_num)
+        self.q_self = nn.Linear(args.emb+args.emb, 6)
+        self.skill_encoder = GumbelMLP(args.emb, args.skill_hidden, args.skill_num, args.gumbel_temperature, args.gumbel_hard)
 
     def init_hidden(self):
-        # 创建一个全0的隐藏状态
         return torch.zeros(1, self.args.emb).cuda()
 
-    def init_phase(self):
-        # 初始化阶段向量
-        one_hot_phase = torch.zeros(1, self.args.phase_num)
-        one_hot_phase[0, 0] = 1
-        return one_hot_phase.cuda()
+    def init_skill(self):
+        skill_init = torch.zeros(1, self.args.skill_num)
+        skill_init[0, 0] = 1
+        return skill_init.cuda()
 
-    def forward(self, inputs, hidden_state, phase_state, task_enemy_num, task_ally_num, test_mode):
-        outputs, _ = self.transformer.forward(inputs, hidden_state, phase_state, None, if_train=not test_mode)
-        # 倒数第二层是隐藏层
+    def forward(self, inputs, hidden_state, skill_state, task_enemy_num, task_ally_num):
+        outputs, _ = self.transformer.forward(inputs, hidden_state, skill_state, None)
+
         h = outputs[:, -2, :]
 
-        # 倒数第一层是阶段层
-        p = outputs[:, -1, :]
+        s = outputs[:, -1, :]
 
-        # 第一层输出不变动作 (no_op stop up down left right)
-        q_basic_actions = self.q_self(torch.cat((outputs[:, 0, :], p), -1))
+        # no_op stop up down left right
+        q_basic_actions = self.q_self(torch.cat((outputs[:, 0, :], s), -1))
 
         q_enemies_list = []
 
-        # 1~i层为敌人（交互动作）
         if(self.args.divide_Q):
             for i in range(task_enemy_num):
-                q_enemy = self.q_interaction(torch.cat((outputs[:, 1 + i, :], p), -1))
+                q_enemy = self.q_interaction(torch.cat((outputs[:, 1 + i, :], s), -1))
                 q_enemies_list.append(q_enemy)
         else:
             for i in range(task_enemy_num):
-                q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], p), -1))
+                q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], s), -1))
                 q_enemy_mean = torch.mean(q_enemy, 1, True)
                 q_enemies_list.append(q_enemy_mean)
 
@@ -53,64 +47,47 @@ class PhaseUPDeT1(nn.Module):
         # concat basic action Q with enemy attack Q
         q = torch.cat((q_basic_actions, q_enemies), 1)
 
-        p_n = self.p_next(p)
+        skill_state = self.skill_encoder(s)
 
-        # print((p_n>0.5).int())
-        # # print(torch.round(p_next * 10) / 10.0)
-        # print("-"*50)
+        return q, h, skill_state
 
-        if(self.args.mixer == "pqmix"):
-            return q, h, p_n, p
-        else:
-            return q, h, p_n
-
-class PhaseUPDeT2(nn.Module):
+class DASEN_v2(nn.Module):
     def __init__(self, input_shape, args):
-        super(PhaseUPDeT2, self).__init__()
+        super(DASEN_v2, self).__init__()
         self.args = args
-        self.transformer = Transformer2(args.token_dim, args.emb, args.heads, args.depth, args.emb, args.mask, args.mask_prob)
-        self.q_self = nn.Linear(args.emb+args.phase_rep, 6)
-        if(args.divide_Q): self.q_interaction = nn.Linear(args.emb+args.phase_rep, 1)
-        self.phase_embedding = nn.Linear(args.phase_num, args.phase_rep)
-        self.phase_representation = MLP(args.emb+args.phase_rep, args.phase_hidden, args.phase_rep)
-        self.phase_next = GumbelSoftmaxLayer(args.phase_rep, args.phase_num, args.temperature)
-        self.p_rep = None
+        self.transformer = Transformer(args.token_dim, args.emb, args.heads, args.depth, args.emb)
+        self.q_self = nn.Linear(args.emb+args.skill_emb, 6)
+        self.skill_decoder = nn.Linear(args.skill_num, args.skill_emb)
+        self.skill_selector = MLP(args.emb+args.skill_emb, args.skill_hidden, args.skill_emb)
+        self.skill_encoder = GumbelMLP(args.skill_emb, args.skill_hidden, args.skill_num, args.gumbel_temperature, args.gumbel_hard)
 
     def init_hidden(self):
-        # 创建一个全0的隐藏状态
         return torch.zeros(1, self.args.emb).cuda()
 
-    def init_phase(self):
-        # 初始化阶段向量
-        # print("-"*50)
-        one_hot_phase = torch.zeros(1, self.args.phase_num)
-        one_hot_phase[0, 0] = 1
-        return one_hot_phase.cuda()
+    def init_skill(self):
+        skill_init = torch.zeros(1, self.args.skill_num)
+        skill_init[0, 0] = 1
+        return skill_init.cuda()
 
-    def forward(self, inputs, hidden_state, phase_state, task_enemy_num, task_ally_num, test_mode):
-        outputs, _ = self.transformer.forward(inputs, hidden_state, None, if_train=not test_mode)
+    def forward(self, inputs, hidden_state, skill_state, task_enemy_num, task_ally_num):
+        outputs, _ = self.transformer.forward(inputs, hidden_state, None)
 
-        # 倒数第一层是隐藏层
         h = outputs[:, -1:, :]
 
-        # 计算当前阶段
-        p_emb = self.phase_embedding(phase_state)
-        p_rep = self.phase_representation(torch.cat((h, p_emb), -1)) # 当前阶段
-        p_rep = p_rep.squeeze()
+        skill_emb = self.skill_decoder(skill_state)
+        s= self.skill_selector(torch.cat((h, skill_emb), -1)).squeeze()
 
-        # 第一层输出不变动作 (no_op stop up down left right)
-        q_basic_actions = self.q_self(torch.cat((outputs[:, 0, :], p_rep), -1))
+        q_basic_actions = self.q_self(torch.cat((outputs[:, 0, :], s), -1))
 
         q_enemies_list = []
 
-        # 第1~i层为敌人，输出交互动作
         if(self.args.divide_Q):
             for i in range(task_enemy_num):
-                q_enemy = self.q_interaction(torch.cat((outputs[:, 1 + i, :], p_rep), -1))
+                q_enemy = self.q_interaction(torch.cat((outputs[:, 1 + i, :], s), -1))
                 q_enemies_list.append(q_enemy)
         else:
             for i in range(task_enemy_num):
-                q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], p_rep), -1))
+                q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], s), -1))
                 q_enemy_mean = torch.mean(q_enemy, 1, True)
                 q_enemies_list.append(q_enemy_mean)
 
@@ -120,82 +97,50 @@ class PhaseUPDeT2(nn.Module):
         # concat basic action Q with enemy attack Q
         q = torch.cat((q_basic_actions, q_enemies), 1)
 
-        p_next = self.phase_next(p_rep)
-        self.p_rep = p_rep
-        # print((p_next>0.5).int())
-        # # print(torch.round(p_next * 10) / 10.0)
-        # print("-"*50)
+        skill_state = self.skill_encoder(s)
 
-        if self.args.pqmix_v2:
-            p_indices = torch.argmax(p_next, dim=-1) + 1
-            return q, h, p_next, p_indices
-        else:
-            return q, h, p_next, p_rep # kl_1
+        return q, h, skill_state
 
-class PhaseUPDeT3(nn.Module):
+class DASEN_v3(nn.Module):
     def __init__(self, input_shape, args):
-        super(PhaseUPDeT3, self).__init__()
+        super(DASEN_v3, self).__init__()
         self.args = args
-        self.transformer = Transformer2(args.token_dim, args.emb, args.heads, args.depth, args.emb, args.mask, args.mask_prob)
-        self.q_self = nn.Linear(args.emb+args.phase_rep, 6)
-        if(args.divide_Q): self.q_interaction = nn.Linear(args.emb+args.phase_rep, 1)
+        self.transformer = Transformer(args.token_dim, args.emb, args.heads, args.depth, args.emb)
+        
+        self.q_self = nn.Linear(args.emb+args.skill_num, 6)
 
-        self.p_rep = None
-        p_e = self.generate_orthogonal_vectors(args.phase_num, args.phase_rep)
-        self.p_e_w = nn.Parameter(p_e, requires_grad=False) # (6, 32)
-        self.classify = DoubleMLP(args.emb+args.phase_rep, args.phase_hidden1, args.phase_hidden2, args.phase_num)
-
-    def gram_schmidt(self, vectors):
-        orthogonal_vectors = []
-        for v in vectors:
-            w = v.clone()
-            for u in orthogonal_vectors:
-                w -= (u @ w) * u
-            w /= torch.norm(w)
-            orthogonal_vectors.append(w)
-        return torch.stack(orthogonal_vectors)
-
-    def generate_orthogonal_vectors(self, n, m):
-        # 生成n个维度为m的随机向量
-        random_vectors = torch.randn(n, m)
-        # 进行Gram-Schmidt正交化
-        orthogonal_vectors = self.gram_schmidt(random_vectors)
-        return orthogonal_vectors
+        self.skill_embedding = nn.Linear(args.skill_num, args.skill_emb)
+        
+        self.skill_selector = GumbelMLP(args.emb+args.phase_rep, args.phase_hidden, args.phase_num, args.temperature, args.gumbel_hard)
 
     def init_hidden(self):
-        # 创建一个全0的隐藏状态
         return torch.zeros(1, self.args.emb).cuda()
+    
+    def init_skill(self):
+        skill_init = torch.zeros(1, self.args.skill_num)
+        skill_init[0, 0] = 1
+        return skill_init.cuda()
 
-    def init_phase(self):
-        # 初始化阶段向量
-        phase = self.p_e_w[0, :]
-        return phase.cuda()
-
-    def forward(self, inputs, hidden_state, p_h, task_enemy_num, task_ally_num, test_mode):
-        outputs, _ = self.transformer.forward(inputs, hidden_state, None, if_train=not test_mode)
-
-        # 倒数第一层是隐藏层
+    def forward(self, inputs, hidden_state, phase_state, task_enemy_num, task_ally_num):
+        outputs, _ = self.transformer.forward(inputs, hidden_state, None)
+        
         h = outputs[:, -1:, :]
 
-        # 计算当前阶段
-        p_n_logits = self.classify(torch.cat((h, p_h), -1)) # (32, 5, 6)
-        p_n_probs = F.softmax(p_n_logits, dim=-1)
-        p_rep = torch.matmul(p_n_probs, self.p_e_w) # (32, 5, 6) * (6, 32)
-        p_rep = p_rep.squeeze()
+        skill_emb = self.skill_embedding(phase_state)
+        
+        s = self.skill_selector(torch.cat((h, skill_emb), -1)).squeeze()
 
-        # 第一层输出不变动作 (no_op stop up down left right)
-        q_basic_actions = self.q_self(torch.cat((outputs[:, 0, :], p_rep), -1))
+        q_basic_actions = self.q_self(torch.cat((outputs[:, 0, :], s), -1))
 
         q_enemies_list = []
 
-        # 第1~i层为敌人，输出交互动作
         if(self.args.divide_Q):
             for i in range(task_enemy_num):
-                q_enemy = self.q_interaction(torch.cat((outputs[:, 1 + i, :], p_rep), -1))
+                q_enemy = self.q_interaction(torch.cat((outputs[:, 1 + i, :], s), -1))
                 q_enemies_list.append(q_enemy)
         else:
             for i in range(task_enemy_num):
-                q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], p_rep), -1))
+                q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], s), -1))
                 q_enemy_mean = torch.mean(q_enemy, 1, True)
                 q_enemies_list.append(q_enemy_mean)
 
@@ -205,12 +150,10 @@ class PhaseUPDeT3(nn.Module):
         # concat basic action Q with enemy attack Q
         q = torch.cat((q_basic_actions, q_enemies), 1)
 
-        self.p_rep = p_rep
-        # print((p_next>0.5).int())
-        # # print(torch.round(p_next * 10) / 10.0)
-        # print("-"*50)
+        max_skill = s.max(dim=-1)[1]
+        dist_skill = torch.eye(s.shape[-1], device=s.device)[max_skill]
 
-        return q, h, p_rep, p_rep
+        return q, h, dist_skill
 
 class SelfAttention(nn.Module):
     def __init__(self, emb, heads=8, mask=False):
@@ -305,40 +248,6 @@ class TransformerBlock(nn.Module):
 
         return x, mask
 
-
-class Transformer1(nn.Module):
-
-    def __init__(self, input_dim, emb, heads, depth, output_dim, phase_num, if_mask, mask_prob=0.2):
-        super().__init__()
-
-        self.num_tokens = output_dim
-
-        self.token_embedding = nn.Linear(input_dim, emb)
-
-        tblocks = []
-        for i in range(depth):
-            tblocks.append(
-                TransformerBlock(emb=emb, heads=heads, if_mask=if_mask, mask_prob=mask_prob))
-
-        self.tblocks = nn.Sequential(*tblocks)
-
-        self.toprobs = nn.Linear(emb, output_dim)
-        self.phase_embedding = nn.Linear(phase_num, emb)
-
-    def forward(self, x, h, p, mask, if_train):
-        p_emb = self.phase_embedding(p) # p是阶段的one hot向量
-
-        tokens = self.token_embedding(x) # (5, 11, 5)->(5, 11, 32): 5个agent、11个entity、5个最大观测
-        tokens = torch.cat((tokens, h, p_emb), 1) # (5, 13, 32)
-
-        b, t, e = tokens.size()
-
-        x, mask, if_train = self.tblocks((tokens, mask, if_train))
-
-        x = self.toprobs(x.view(b * t, e)).view(b, t, self.num_tokens) # (5, 13, 32)
-
-        return x, tokens
-
 # DASEN-v1
 class SkillTransformer(nn.Module):
 
@@ -358,10 +267,10 @@ class SkillTransformer(nn.Module):
 
         self.toprobs = nn.Linear(emb, output_dim)
 
-        self.skill_embedding = nn.Linear(skill_num, emb)
+        self.skill_decoder = nn.Linear(skill_num, emb)
 
     def forward(self, x, h, s, mask):
-        s_emb = self.skill_embedding(s)
+        s_emb = self.skill_decoder(s)
 
         tokens = self.token_embedding(x)
         tokens = torch.cat((tokens, h, s_emb), 1)
@@ -371,37 +280,6 @@ class SkillTransformer(nn.Module):
         x, mask = self.tblocks((tokens, mask))
 
         x = self.toprobs(x.view(b * t, e)).view(b, t, self.num_tokens)
-
-        return x, tokens
-
-class Transformer2(nn.Module):
-
-    def __init__(self, input_dim, emb, heads, depth, output_dim, if_mask, mask_prob):
-        super().__init__()
-
-        self.num_tokens = output_dim
-
-        self.token_embedding = nn.Linear(input_dim, emb)
-
-        tblocks = []
-        for i in range(depth):
-            tblocks.append(
-                TransformerBlock(emb=emb, heads=heads, if_mask=if_mask, mask_prob=mask_prob))
-
-        self.tblocks = nn.Sequential(*tblocks)
-
-        self.toprobs = nn.Linear(emb, output_dim)
-
-    def forward(self, x, h, mask, if_train):
-
-        tokens = self.token_embedding(x) # (5, 11, 5)->(5, 11, 32): 5个agent、11个entity、5个最大观测
-        tokens = torch.cat((tokens, h), 1) # (5, 12, 32)
-
-        b, t, e = tokens.size()
-
-        x, mask, if_train = self.tblocks((tokens, mask, if_train))
-
-        x = self.toprobs(x.view(b * t, e)).view(b, t, self.num_tokens) # (5, 12, 32)
 
         return x, tokens
 
@@ -442,33 +320,6 @@ def mask_(matrices, maskval=0.0, mask_diagonal=True):
     indices = torch.triu_indices(h, w, offset=0 if mask_diagonal else 1)
     matrices[:, indices[0], indices[1]] = maskval
 
-class GumbelSoftmaxLayer(nn.Module):
-    def __init__(self, input_dim, output_dim, temperature=1.0):
-        super(GumbelSoftmaxLayer, self).__init__()
-        self.fc = nn.Linear(input_dim, output_dim)
-        self.temperature = temperature
-
-    def forward(self, x):
-        logits = self.fc(x)
-        return self.gumbel_softmax(logits, self.temperature)
-
-    def gumbel_softmax(self, logits, temperature):
-        gumbels = -torch.empty_like(logits).exponential_().log()  # Sample from Gumbel(0,1)
-        gumbels = (logits + gumbels) / temperature
-        y_soft = F.softmax(gumbels, dim=-1)
-        return y_soft
-
-class GumbelSoftmaxNetwork(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, temperature=1.0):
-        super(GumbelSoftmaxNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.gumbel_softmax_layer = GumbelSoftmaxLayer(hidden_dim, output_dim, temperature)
-
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = self.gumbel_softmax_layer(x)
-        return x
-
 class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
         super(MLP, self).__init__()
@@ -480,9 +331,9 @@ class MLP(nn.Module):
         x = self.fc2(x)
         return x
 
-class DoubleMLP(nn.Module):
+class TwoLayerMLP(nn.Module):
     def __init__(self, input_dim, hidden_dim1, hidden_dim2, output_dim):
-        super(DoubleMLP, self).__init__()
+        super(TwoLayerMLP, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim1)
         self.fc2 = nn.Linear(hidden_dim1, hidden_dim2)
         self.fc3 = nn.Linear(hidden_dim2, output_dim)
@@ -492,6 +343,21 @@ class DoubleMLP(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+    
+class GumbelMLP(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, gumbel_temperature=1.0, gumbel_hard=False):
+        super(GumbelMLP, self).__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
+        self.tau = gumbel_temperature
+        self.gumbel_hard = gumbel_hard
+    
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        y = F.gumbel_softmax(x, tau=self.tau, hard=self.gumbel_hard)
+        
+        return y
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Unit Testing')
@@ -502,15 +368,5 @@ if __name__ == '__main__':
     parser.add_argument('--ally_num', default='5', type=int)
     parser.add_argument('--enemy_num', default='5', type=int)
     parser.add_argument('--episode', default='20', type=int)
-    parser.add_argument('--phase_num', default='6', type=int)
+    parser.add_argument('--skill_num', default='4', type=int)
     args = parser.parse_args()
-
-
-    # testing the agent
-    agent = PhaseUPDeT1(None, args).cuda()
-    hidden_state = agent.init_hidden().cuda().expand(args.ally_num, 1, -1)
-    tensor = torch.rand(args.ally_num, args.ally_num+args.enemy_num, args.token_dim).cuda()
-    q_list = []
-    for _ in range(args.episode):
-        q, hidden_state = agent.forward(tensor, hidden_state, args.ally_num, args.enemy_num)
-        q_list.append(q)
