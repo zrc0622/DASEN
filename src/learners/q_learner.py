@@ -25,7 +25,7 @@ class QLearner:
             elif args.mixer == "qmix":
                 self.mixer = QMixer(args)
             elif args.mixer == "se_qmix":
-                self.mixer =SEQMixer(args)
+                self.mixer = SEQMixer(args)
             else:
                 raise ValueError("Mixer {} not recognised.".format(args.mixer))
             self.params += list(self.mixer.parameters())

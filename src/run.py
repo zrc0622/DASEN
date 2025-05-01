@@ -17,6 +17,8 @@ from components.transforms import OneHot
 import datetime
 import numpy as np
 
+from tabulate import tabulate
+
 def run(_run, _config, _log):
 
     # check args sanity
@@ -91,12 +93,26 @@ def evaluate_sequential(args, runner):
         mean_rate = np.mean(results)
         variance_rate = np.var(results)
         std_deviation = np.std(results)
-        print("+" + "-"*40 + "+")
-        print("| Success Rate List:    ", results, " "* (30 - len(str(results))), "|")
-        print("| Mean Success Rate:    ", mean_rate, " "* (30 - len(str(mean_rate))), "|")
-        print("| Variance of Success Rate: ", variance_rate, " "* (30 - len(str(variance_rate))), "|")
-        print("| Standard Deviation of Success Rate: ", std_deviation, " "* (30 - len(str(std_deviation))), "|")
-        print("+" + "-"*40 + "+")
+        count = len(results)
+        data = [
+            ["Mean",    mean_rate],
+            ["Var",     variance_rate],
+            ["Std Dev", std_deviation],
+            ["Count",   count],
+        ]
+        print(tabulate(
+            data,
+            headers=["Metric", "Value"],
+            tablefmt="grid",
+            stralign="left",
+            numalign="left",
+        ))
+        # print("+" + "-"*54 + "+")
+        # print("| Success Rate List:  ", results, " "* (30 - len(str(results))), "|")
+        # print("| Mean:               ", mean_rate, " "* (30 - len(str(mean_rate))), "|")
+        # print("| Variance:           ", variance_rate, " "* (30 - len(str(variance_rate))), "|")
+        # print("| Standard Deviation: ", std_deviation, " "* (30 - len(str(std_deviation))), "|")
+        # print("+" + "-"*54 + "+")
 
         if args.save_replay:
             runner.save_replay()
@@ -125,7 +141,7 @@ def run_sequential(args, logger):
         "terminated": {"vshape": (1,), "dtype": th.uint8},
     }
     if args.name == "se_qmix":
-        scheme["skill_state"] = {"vshape": args.skill_num, "dtype": th.long}
+        scheme["skill_state"] = {"vshape": args.skill_num}
     groups = {
         "agents": args.n_agents
     }

@@ -31,15 +31,10 @@ class DASEN_v1(nn.Module):
 
         q_enemies_list = []
 
-        if(self.args.divide_Q):
-            for i in range(task_enemy_num):
-                q_enemy = self.q_interaction(torch.cat((outputs[:, 1 + i, :], s), -1))
-                q_enemies_list.append(q_enemy)
-        else:
-            for i in range(task_enemy_num):
-                q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], s), -1))
-                q_enemy_mean = torch.mean(q_enemy, 1, True)
-                q_enemies_list.append(q_enemy_mean)
+        for i in range(task_enemy_num):
+            q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], s), -1))
+            q_enemy_mean = torch.mean(q_enemy, 1, True)
+            q_enemies_list.append(q_enemy_mean)
 
         # concat enemy Q over all enemies
         q_enemies = torch.stack(q_enemies_list, dim=1).squeeze()
@@ -59,7 +54,7 @@ class DASEN_v2(nn.Module):
         self.q_self = nn.Linear(args.emb+args.skill_emb, 6)
         self.skill_decoder = nn.Linear(args.skill_num, args.skill_emb)
         self.skill_selector = MLP(args.emb+args.skill_emb, args.skill_hidden, args.skill_emb)
-        self.skill_encoder = GumbelMLP(args.skill_emb, args.skill_hidden, args.skill_num, args.gumbel_temperature, args.gumbel_hard)
+        self.skill_encoder = GumbelLayer(args.skill_emb, args.skill_num, args.gumbel_temperature, args.gumbel_hard)
 
     def init_hidden(self):
         return torch.zeros(1, self.args.emb).cuda()
@@ -75,21 +70,16 @@ class DASEN_v2(nn.Module):
         h = outputs[:, -1:, :]
 
         skill_emb = self.skill_decoder(skill_state)
-        s= self.skill_selector(torch.cat((h, skill_emb), -1)).squeeze()
+        s = self.skill_selector(torch.cat((h, skill_emb), -1)).squeeze()
 
         q_basic_actions = self.q_self(torch.cat((outputs[:, 0, :], s), -1))
 
         q_enemies_list = []
 
-        if(self.args.divide_Q):
-            for i in range(task_enemy_num):
-                q_enemy = self.q_interaction(torch.cat((outputs[:, 1 + i, :], s), -1))
-                q_enemies_list.append(q_enemy)
-        else:
-            for i in range(task_enemy_num):
-                q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], s), -1))
-                q_enemy_mean = torch.mean(q_enemy, 1, True)
-                q_enemies_list.append(q_enemy_mean)
+        for i in range(task_enemy_num):
+            q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], s), -1))
+            q_enemy_mean = torch.mean(q_enemy, 1, True)
+            q_enemies_list.append(q_enemy_mean)
 
         # concat enemy Q over all enemies
         q_enemies = torch.stack(q_enemies_list, dim=1).squeeze()
@@ -111,7 +101,7 @@ class DASEN_v3(nn.Module):
 
         self.skill_embedding = nn.Linear(args.skill_num, args.skill_emb)
         
-        self.skill_selector = GumbelMLP(args.emb+args.phase_rep, args.phase_hidden, args.phase_num, args.temperature, args.gumbel_hard)
+        self.skill_selector = GumbelMLP(args.emb+args.skill_emb, args.skill_hidden, args.skill_num, args.gumbel_temperature, args.gumbel_hard)
 
     def init_hidden(self):
         return torch.zeros(1, self.args.emb).cuda()
@@ -134,15 +124,10 @@ class DASEN_v3(nn.Module):
 
         q_enemies_list = []
 
-        if(self.args.divide_Q):
-            for i in range(task_enemy_num):
-                q_enemy = self.q_interaction(torch.cat((outputs[:, 1 + i, :], s), -1))
-                q_enemies_list.append(q_enemy)
-        else:
-            for i in range(task_enemy_num):
-                q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], s), -1))
-                q_enemy_mean = torch.mean(q_enemy, 1, True)
-                q_enemies_list.append(q_enemy_mean)
+        for i in range(task_enemy_num):
+            q_enemy = self.q_self(torch.cat((outputs[:, 1 + i, :], s), -1))
+            q_enemy_mean = torch.mean(q_enemy, 1, True)
+            q_enemies_list.append(q_enemy_mean)
 
         # concat enemy Q over all enemies
         q_enemies = torch.stack(q_enemies_list, dim=1).squeeze()
@@ -344,6 +329,19 @@ class TwoLayerMLP(nn.Module):
         x = self.fc3(x)
         return x
     
+class GumbelLayer(nn.Module):
+    def __init__(self, input_dim, output_dim, gumbel_temperature=1.0, gumbel_hard=False):
+        super(GumbelLayer, self).__init__()
+        self.fc1 = nn.Linear(input_dim, output_dim)
+        self.tau = gumbel_temperature
+        self.gumbel_hard = gumbel_hard
+    
+    def forward(self, x):
+        x = self.fc1(x)
+        y = F.gumbel_softmax(x, tau=self.tau, hard=self.gumbel_hard)
+        
+        return y
+
 class GumbelMLP(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, gumbel_temperature=1.0, gumbel_hard=False):
         super(GumbelMLP, self).__init__()

@@ -10,7 +10,7 @@
             "args": [
                 "--total-config=dasen",
                 "--agent=dasen_v1",
-                "--config=qmix",
+                "--alg-config=qmix",
                 "--env-config=sc2",
                 "with",
                 "env_args.map_name=5m_vs_6m"
@@ -25,7 +25,7 @@
             "args": [
                 "--total-config=dasen",
                 "--agent=dasen_v2",
-                "--config=qmix",
+                "--alg-config=qmix",
                 "--env-config=sc2",
                 "with",
                 "env_args.map_name=5m_vs_6m"
@@ -40,7 +40,7 @@
             "args": [
                 "--total-config=dasen",
                 "--agent=dasen_v3",
-                "--config=qmix",
+                "--alg-config=qmix",
                 "--env-config=sc2",
                 "with",
                 "env_args.map_name=5m_vs_6m"
@@ -55,25 +55,39 @@
             "args": [
                 "--total-config=dasen",
                 "--agent=dasen_v3",
-                "--config=se_qmix",
+                "--alg-config=se_qmix",
                 "--env-config=sc2",
                 "with",
                 "env_args.map_name=5m_vs_6m"
             ]
         },
         {
-            "name": "ZERO",
+            "name": "UPDeT_zero",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--total-config=default_zero",
+                "--alg-config=qmix",
+                "--env-config=sc2_zero",
+                "with",
+                "env_args.map_name=8m_vs_9m"
+            ]
+        },
+        {
+            "name": "DASEN_zero",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/src/main.py",
             "console": "integratedTerminal",
             "args": [
                 "--total-config=dasen_zero",
-                "--agent=dasen_v3",
-                "--config=se_qmix",
+                "--agent=dasen_v1",
+                "--alg-config=qmix",
                 "--env-config=sc2_zero",
                 "with",
-                "env_args.map_name=5m_vs_6m"
+                "env_args.map_name=8m_vs_9m"
             ]
         }
     ]

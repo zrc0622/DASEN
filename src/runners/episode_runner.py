@@ -112,7 +112,7 @@ class EpisodeRunner:
             self.log_train_stats_t = self.t_env
 
         if self.args.zero_shot:
-            if len(self.test_returns) == self.args.test_nepisode:
+            if len(self.test_returns) + 1 == self.args.test_nepisode:
                 return cur_stats["battle_won"]/cur_stats["n_episodes"]*100
             else:
                 return -1

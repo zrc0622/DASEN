@@ -4,39 +4,54 @@
 
 ```bash
 # UPDeT (baseline)
-python3 src/main.py --total-config=default --alg-config=qmix --env-config=sc2 --agent with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=default --alg-config=qmix --env-config=sc2 --seed=354881840 with env_args.map_name=5m_vs_6m
 
 # DASEN-v1
-python3 src/main.py --total-config=dasen --agent=dasen_v1 --alg-config=qmix --env-config=sc2 with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=dasen --agent=dasen_v1 --alg-config=qmix --env-config=sc2 --seed=612444058 with env_args.map_name=5m_vs_6m
 
 # DASEN-v2
-python3 src/main.py --total-config=dasen --agent=dasen_v2 --alg-config=qmix --env-config=sc2 with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=dasen --agent=dasen_v2 --alg-config=qmix --env-config=sc2 --seed=603346636 with env_args.map_name=5m_vs_6m
 
 # DASEN-v3
-python3 src/main.py --total-config=dasen --agent=dasen_v3 --alg-config=qmix --env-config=sc2 with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=dasen --agent=dasen_v3 --alg-config=qmix --env-config=sc2 --seed=869420052 with env_args.map_name=5m_vs_6m
 
 # DASEN-v3 + SE-QMIX
-python3 src/main.py --total-config=dasen --agent=dasen_v3 --alg-config=se_qmix --env-config=sc2 with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=dasen --agent=dasen_v3 --alg-config=se_qmix --env-config=sc2 --seed=918940350 with env_args.map_name=5m_vs_6m
 ```
 
 ## 零样本泛化
 
 ```bash
 # UPDeT (baseline)
-python3 src/main.py --total-config=default_zero --alg-config=qmix --env-config=sc2_zero --agent with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=default_zero --alg-config=qmix --env-config=sc2_zero with env_args.map_name=8m_vs_9m
 
 # DASEN-v1
-python3 src/main.py --total-config=dasen_zero --agent=dasen_v1 --alg-config=qmix --env-config=sc2_zero with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=dasen_zero --agent=dasen_v1 --alg-config=qmix --env-config=sc2_zero with env_args.map_name=8m_vs_9m
 
 # DASEN-v2
-python3 src/main.py --total-config=dasen_zero --agent=dasen_v2 --alg-config=qmix --env-config=sc2_zero with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=dasen_zero --agent=dasen_v2 --alg-config=qmix --env-config=sc2_zero with env_args.map_name=8m_vs_9m
 
 # DASEN-v3
-python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=qmix --env-config=sc2_zero with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=qmix --env-config=sc2_zero with env_args.map_name=8m_vs_9m
 
 # DASEN-v3 + SE-QMIX
-python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=se_qmix --env-config=sc2_zero with env_args.map_name=5m_vs_6m
+python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=se_qmix --env-config=sc2_zero with env_args.map_name=8m_vs_9m
 ```
+
+# 实验结果
+
+|             | **UPDeT**     | **DASEN-v1**        | **DASEN-v2**    | **DASEN-v3**       | **DASEN-v3+SE-QMIX** |
+|-------      |-------        |-------              |-------          |--------            |--------              |
+| 5m_vs_6m    |               |                     |                 |                    |                      |
+| 8m          | 77.1±4.4      | 89.8±3.2            | 97.4±1.6        | 90.9±3.1           |  96.1±1.3            |
+| 8m_vs_9m    | 14.3±2.4      | 20.9±3.4            | 24.5±3.2        | 48.7±4.9           |  62.3±5.5            |
+| 10m_vs_11m  | 1.9±1.6       | 2.8±1.4             | 17.6±3.2        | 27.6±3.6           |  54.5±3.7            |
+
+- UPDeT：0425003409-updet-qmix-5m_vs_6m-seed-354881840
+- DASEN-v1：0425003554-dasen_v1-qmix-5m_vs_6m-skill-4-seed-612444058
+- DASEN-v2：0430235226-dasen_v2-qmix-5m_vs_6m-skill-4-seed-603346636
+- DASEN-v3：0423210303-dasen_v3-qmix-5m_vs_6m-skill-4-seed-869420052
+- DASEN-v3+SE-QMIX：0425233952-dasen_v3-se_qmix-5m_vs_6m-skill-4-seed-918940350
 
 <!-- # UPDeT
 Official Implementation of [UPDeT: Universal Multi-agent Reinforcement Learning via Policy Decoupling with Transformers](https://openreview.net/forum?id=v9c7hr9ADKx) (ICLR 2021 spotlight)
