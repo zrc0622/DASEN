@@ -38,7 +38,7 @@ python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=qmix
 python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=se_qmix --env-config=sc2_zero with env_args.map_name=8m_vs_9m
 ```
 
-# 实验结果
+## 实验结果
 
 |             | **UPDeT**     | **DASEN-v1**        | **DASEN-v2**    | **DASEN-v3**       | **DASEN-v3+SE-QMIX** |
 |-------      |-------        |-------              |-------          |--------            |--------              |
