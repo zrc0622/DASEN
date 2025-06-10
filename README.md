@@ -38,7 +38,7 @@ python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=qmix
 python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=se_qmix --env-config=sc2_zero with env_args.map_name=8m_vs_9m
 ```
 
-# 实验结果
+## 实验结果
 
 |             | **UPDeT**     | **DASEN-v1**        | **DASEN-v2**    | **DASEN-v3**       | **DASEN-v3+SE-QMIX** |
 |-------      |-------        |-------              |-------          |--------            |--------              |
@@ -51,6 +51,10 @@ python3 src/main.py --total-config=dasen_zero --agent=dasen_v3 --alg-config=se_q
 - DASEN-v2：0430235226-dasen_v2-qmix-5m_vs_6m-skill-4-seed-603346636
 - DASEN-v3：0423210303-dasen_v3-qmix-5m_vs_6m-skill-4-seed-869420052
 - DASEN-v3+SE-QMIX：0425233952-dasen_v3-se_qmix-5m_vs_6m-skill-4-seed-918940350
+
+<!-- 
+Python 3.7.16
+ -->
 
 <!-- # UPDeT
 Official Implementation of [UPDeT: Universal Multi-agent Reinforcement Learning via Policy Decoupling with Transformers](https://openreview.net/forum?id=v9c7hr9ADKx) (ICLR 2021 spotlight)
